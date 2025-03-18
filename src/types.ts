@@ -68,3 +68,19 @@ export interface RateLimiter {
   canMakeRequest(): boolean;
   waitForAvailableToken(): Promise<void>;
 }
+
+export interface TrelloAttachment {
+  id: string;
+  name: string;
+  url: string;
+  date: string;
+  mimeType?: string;
+}
+
+export interface AttachmentParams {
+  cardId: string;
+  name?: string;
+  file?: Blob | File; // For file uploads (Browser File or Blob)
+  url?: string; // For URL attachments
+  mimeType?: string; // Optional for files
+}

@@ -16,6 +16,8 @@ import {
   validateArchiveCardRequest,
   validateAddListRequest,
   validateArchiveListRequest,
+  validateAddAttachmentRequest,
+  validateGetAttachmentsRequest,
 } from './validators.js';
 
 class TrelloServer {
@@ -28,7 +30,9 @@ class TrelloServer {
     const boardId = process.env.TRELLO_BOARD_ID;
 
     if (!apiKey || !token || !boardId) {
-      throw new Error('TRELLO_API_KEY, TRELLO_TOKEN, and TRELLO_BOARD_ID environment variables are required');
+      throw new Error(
+        'TRELLO_API_KEY, TRELLO_TOKEN, and TRELLO_BOARD_ID environment variables are required'
+      );
     }
 
     this.trelloClient = new TrelloClient({ apiKey, token, boardId });
@@ -46,9 +50,9 @@ class TrelloServer {
     );
 
     this.setupToolHandlers();
-    
+
     // Error handling
-    this.server.onerror = (error) => console.error('[MCP Error]', error);
+    this.server.onerror = error => console.error('[MCP Error]', error);
     process.on('SIGINT', async () => {
       await this.server.close();
       process.exit(0);
@@ -130,7 +134,7 @@ class TrelloServer {
         },
         {
           name: 'update_card_details',
-          description: 'Update an existing card\'s details',
+          description: "Update an existing card's details",
           inputSchema: {
             type: 'object',
             properties: {
@@ -212,10 +216,46 @@ class TrelloServer {
             required: [],
           },
         },
+        {
+          name: 'add_attachment_to_card',
+          description: 'Add a URL attachment to a card',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              cardId: {
+                type: 'string',
+                description: 'ID of the card to add the attachment to',
+              },
+              url: {
+                type: 'string',
+                description: 'URL to attach to the card',
+              },
+              name: {
+                type: 'string',
+                description: 'Display name for the attachment (optional)',
+              },
+            },
+            required: ['cardId', 'url'],
+          },
+        },
+        {
+          name: 'get_card_attachments',
+          description: 'Get all attachments on a card',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              cardId: {
+                type: 'string',
+                description: 'ID of the card to get attachments from',
+              },
+            },
+            required: ['cardId'],
+          },
+        },
       ],
     }));
 
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this.server.setRequestHandler(CallToolRequestSchema, async request => {
       try {
         if (!request.params.arguments) {
           throw new McpError(ErrorCode.InvalidParams, 'Missing arguments');
@@ -291,6 +331,26 @@ class TrelloServer {
             const cards = await this.trelloClient.getMyCards();
             return {
               content: [{ type: 'text', text: JSON.stringify(cards, null, 2) }],
+            };
+          }
+
+          case 'add_attachment_to_card': {
+            const validArgs = validateAddAttachmentRequest(args);
+            const attachment = await this.trelloClient.addAttachment({
+              cardId: validArgs.cardId,
+              url: validArgs.url,
+              name: validArgs.name,
+            });
+            return {
+              content: [{ type: 'text', text: JSON.stringify(attachment, null, 2) }],
+            };
+          }
+
+          case 'get_card_attachments': {
+            const validArgs = validateGetAttachmentsRequest(args);
+            const attachments = await this.trelloClient.getAttachments(validArgs.cardId);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(attachments, null, 2) }],
             };
           }
 

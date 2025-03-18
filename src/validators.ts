@@ -45,7 +45,9 @@ export function validateGetCardsListRequest(args: Record<string, unknown>): { li
   };
 }
 
-export function validateGetRecentActivityRequest(args: Record<string, unknown>): { limit?: number } {
+export function validateGetRecentActivityRequest(args: Record<string, unknown>): {
+  limit?: number;
+} {
   return {
     limit: validateOptionalNumber(args.limit),
   };
@@ -113,5 +115,32 @@ export function validateArchiveListRequest(args: Record<string, unknown>): { lis
   }
   return {
     listId: validateString(args.listId, 'listId'),
+  };
+}
+
+export function validateAddAttachmentRequest(args: Record<string, unknown>): {
+  cardId: string;
+  url?: string;
+  name?: string;
+} {
+  if (!args.cardId) {
+    throw new McpError(ErrorCode.InvalidParams, 'cardId is required');
+  }
+  if (!args.url) {
+    throw new McpError(ErrorCode.InvalidParams, 'url is required');
+  }
+  return {
+    cardId: validateString(args.cardId, 'cardId'),
+    url: validateString(args.url, 'url'),
+    name: validateOptionalString(args.name),
+  };
+}
+
+export function validateGetAttachmentsRequest(args: Record<string, unknown>): { cardId: string } {
+  if (!args.cardId) {
+    throw new McpError(ErrorCode.InvalidParams, 'cardId is required');
+  }
+  return {
+    cardId: validateString(args.cardId, 'cardId'),
   };
 }

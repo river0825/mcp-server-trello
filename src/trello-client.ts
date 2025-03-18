@@ -1,5 +1,12 @@
 import axios, { AxiosInstance } from 'axios';
-import { TrelloConfig, TrelloCard, TrelloList, TrelloAction, TrelloMember } from './types.js';
+import {
+  TrelloConfig,
+  TrelloCard,
+  TrelloList,
+  TrelloAction,
+  TrelloAttachment,
+  AttachmentParams,
+} from './types.js';
 import { createTrelloRateLimiters } from './rate-limiter.js';
 
 export class TrelloClient {
@@ -18,7 +25,7 @@ export class TrelloClient {
     this.rateLimiter = createTrelloRateLimiters();
 
     // Add rate limiting interceptor
-    this.axiosInstance.interceptors.request.use(async (config) => {
+    this.axiosInstance.interceptors.request.use(async config => {
       await this.rateLimiter.waitForAvailable();
       return config;
     });
@@ -131,6 +138,43 @@ export class TrelloClient {
   async getMyCards(): Promise<TrelloCard[]> {
     return this.handleRequest(async () => {
       const response = await this.axiosInstance.get('/members/me/cards');
+      return response.data;
+    });
+  }
+
+  async addAttachment(params: AttachmentParams): Promise<TrelloAttachment> {
+    return this.handleRequest(async () => {
+      if (params.url) {
+        // Add URL attachment
+        const response = await this.axiosInstance.post(`/cards/${params.cardId}/attachments`, {
+          url: params.url,
+          name: params.name,
+        });
+        return response.data;
+      } else if (params.file) {
+        // Add file attachment
+        const formData = new FormData();
+        if (params.name) formData.append('name', params.name);
+        formData.append('file', params.file);
+
+        const response = await this.axiosInstance.post(
+          `/cards/${params.cardId}/attachments`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        );
+        return response.data;
+      }
+      throw new Error('Either url or file must be provided');
+    });
+  }
+
+  async getAttachments(cardId: string): Promise<TrelloAttachment[]> {
+    return this.handleRequest(async () => {
+      const response = await this.axiosInstance.get(`/cards/${cardId}/attachments`);
       return response.data;
     });
   }
